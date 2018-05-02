@@ -107,20 +107,16 @@ type shareHandler struct {
 func (h *shareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
-        handleRedirect(h, w, r)
+		h.Redirect(w, r)
     case "POST":
-        handleStore(h, w, r)
+		h.Store(w, r)
     default:
         w.WriteHeader(http.StatusInternalServerError)
     }
 }
 
-func handleStore(h *shareHandler, w http.ResponseWriter, r *http.Request) {
-    h.r.add(r.URL.Path[1:], r.FormValue("url"))
-}
-
-func handleRedirect(h *shareHandler, w http.ResponseWriter, r *http.Request) {
-    redirection, ok := h.r.get(r.URL.Path[1:])
+func (h *shareHandler) Redirect(w http.ResponseWriter, r *http.Request) {
+	redirection, ok := h.r.get(r.URL.Path[1:])
 
     if !ok {
         w.WriteHeader(http.StatusNotFound)
@@ -128,6 +124,10 @@ func handleRedirect(h *shareHandler, w http.ResponseWriter, r *http.Request) {
     }
 
     http.Redirect(w, r, redirection.url, http.StatusFound)
+}
+
+func (h *shareHandler) Store(w http.ResponseWriter, r *http.Request) {
+	h.r.add(r.URL.Path[1:], r.FormValue("url"))
 }
 
 func main() {
