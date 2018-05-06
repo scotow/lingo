@@ -101,7 +101,7 @@ func (r *redirectionMap) deleteOldest() {
 }
 
 type shareHandler struct {
-    r *redirectionMap
+    *redirectionMap
 }
 
 func (h *shareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +116,7 @@ func (h *shareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *shareHandler) Redirect(w http.ResponseWriter, r *http.Request) {
-	redirection, ok := h.r.get(r.URL.Path[1:])
+	redirection, ok := h.get(r.URL.Path[1:])
 
     if !ok {
         w.WriteHeader(http.StatusNotFound)
@@ -127,7 +127,7 @@ func (h *shareHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *shareHandler) Store(w http.ResponseWriter, r *http.Request) {
-	h.r.add(r.URL.Path[1:], r.FormValue("url"))
+	h.add(r.URL.Path[1:], r.FormValue("url"))
 }
 
 func main() {
