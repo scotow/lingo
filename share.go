@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
-    "sync"
+	"sync"
 	"time"
 	"regexp"
 	"math"
@@ -21,23 +21,23 @@ type redirection struct {
 }
 
 type redirectionMap struct {
-    sync.RWMutex
-    values map[string]*redirection
+	sync.RWMutex
+	values map[string]*redirection
 }
 
 func newRedirectionMap() *redirectionMap {
-    return &redirectionMap{
-        values: make(map[string]*redirection),
-    }
+	return &redirectionMap{
+		values: make(map[string]*redirection),
+	}
 }
 
 func (r *redirectionMap) get(key string) (value *redirection, ok bool) {
-    r.RLock()
-    defer r.RUnlock()
+	r.RLock()
+	defer r.RUnlock()
 
-    value, ok = r.values[key]
+	value, ok = r.values[key]
 	log.Printf("'%s' fetched.", key)
-    return
+	return
 }
 
 func (r *redirectionMap) add(key, link string) {
@@ -47,8 +47,8 @@ func (r *redirectionMap) add(key, link string) {
 	}
 
 	// Lock map muttex.
-    r.Lock()
-    defer r.Unlock()
+	r.Lock()
+	defer r.Unlock()
 
 	if len(r.values) >= max {
 		r.deleteOldest()
@@ -65,15 +65,15 @@ func (r *redirectionMap) add(key, link string) {
 	})
 
 	// Add redirection to map.
-    r.values[key] = &redirection{link, autoDelete, time.Now().UnixNano()}
+	r.values[key] = &redirection{link, autoDelete, time.Now().UnixNano()}
 
 	log.Printf("'%s' added.", key)
 }
 
 func (r *redirectionMap) delete(key string) {
 	// Lock map muttex.
-    r.Lock()
-    defer r.Unlock()
+	r.Lock()
+	defer r.Unlock()
 
 	log.Printf("'%s' deleted.", key)
 	delete(r.values, key)
@@ -101,29 +101,29 @@ func (r *redirectionMap) deleteOldest() {
 }
 
 type shareHandler struct {
-    *redirectionMap
+	*redirectionMap
 }
 
 func (h *shareHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    switch r.Method {
-    case "GET":
+	switch r.Method {
+	case "GET":
 		h.Redirect(w, r)
-    case "POST":
+	case "POST":
 		h.Store(w, r)
-    default:
-        w.WriteHeader(http.StatusInternalServerError)
-    }
+	default:
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
 
 func (h *shareHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 	redirection, ok := h.get(r.URL.Path[1:])
 
-    if !ok {
-        w.WriteHeader(http.StatusNotFound)
-        return
-    }
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 
-    http.Redirect(w, r, redirection.url, http.StatusFound)
+	http.Redirect(w, r, redirection.url, http.StatusFound)
 }
 
 func (h *shareHandler) Store(w http.ResponseWriter, r *http.Request) {
@@ -131,8 +131,8 @@ func (h *shareHandler) Store(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-    r := newRedirectionMap()
-    http.Handle("/", &shareHandler{r})
+	r := newRedirectionMap()
+	http.Handle("/", &shareHandler{r})
 
 	log.Fatal(http.ListenAndServe("localhost:6000", nil))
 }
