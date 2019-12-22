@@ -12,8 +12,8 @@ import (
 
 var (
 	port     = flag.Int("p", 8080, "listening port")
-	duration = flag.Duration("d", time.Hour, "expiration duration of links. 0 for no timeout (memory leak)")
-	capacity = flag.Int("n", 100, "maximum capacity of the redirection map, 0 for infinite capacity (memory leak)")
+	duration = flag.Duration("d", time.Hour, "expiration duration of links. 0 for no timeout")
+	capacity = flag.Int("n", 100, "maximum capacity of the redirection map. 0 for infinite capacity")
 )
 
 var (
