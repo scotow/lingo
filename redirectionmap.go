@@ -2,23 +2,27 @@ package lingo
 
 import (
 	"log"
-	"math"
 	"sync"
 	"time"
 )
 
+var (
+	maxTime = time.Unix(1<<63-62135596801, 0)
+)
+
 func NewRedirectionMap(timeout time.Duration, capacity int) *RedirectionMap {
-	return &RedirectionMap{
-		values: make(map[string]*Redirection),
-		timeout: timeout,
-		capacity: capacity,
-	}
+	rm := new(RedirectionMap)
+	rm.values = make(map[string]*Redirection)
+	rm.timeout = timeout
+	rm.capacity = capacity
+
+	return rm
 }
 
 type RedirectionMap struct {
-	lock sync.RWMutex
-	values map[string]*Redirection
-	timeout time.Duration
+	lock     sync.RWMutex
+	values   map[string]*Redirection
+	timeout  time.Duration
 	capacity int
 }
 
@@ -36,22 +40,25 @@ func (r *RedirectionMap) Add(key, link string) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	if len(r.values) >= r.capacity {
+	if r.capacity > 0 && len(r.values) >= r.capacity {
 		r.deleteOldest()
 	}
 
 	// Cancel previous auto delete timer if present.
-	if previous, contain := r.values[key]; contain {
+	if previous, contain := r.values[key]; contain && r.timeout > 0 {
 		previous.autoDelete.Stop()
 	}
 
 	// Schedule auto delete.
-	autoDelete := time.AfterFunc(r.timeout, func() {
-		r.delete(key)
-	})
+	var autoDelete *time.Timer = nil
+	if r.timeout > 0 {
+		autoDelete = time.AfterFunc(r.timeout, func() {
+			r.delete(key)
+		})
+	}
 
 	// Add redirection to map.
-	r.values[key] = &Redirection{link, autoDelete, time.Now().UnixNano()}
+	r.values[key] = &Redirection{link, autoDelete, time.Now()}
 
 	log.Printf("'%s' added.", key)
 }
@@ -67,18 +74,20 @@ func (r *RedirectionMap) delete(key string) {
 
 func (r *RedirectionMap) deleteOldest() {
 	// Find oldest redirection.
-	min := int64(math.MaxInt64)
+	min := maxTime
 	var oldest string
 
 	for key, value := range r.values {
-		if value.creation < min {
+		if value.creation.Before(min) {
 			min = value.creation
 			oldest = key
 		}
 	}
 
 	// Cancel oldest timer.
-	r.values[oldest].autoDelete.Stop()
+	if r.timeout > 0 {
+		r.values[oldest].autoDelete.Stop()
+	}
 
 	// Remove entry from map.
 	delete(r.values, oldest)

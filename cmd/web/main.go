@@ -2,17 +2,18 @@ package main
 
 import (
 	"flag"
-	"github.com/scotow/lingo"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
+
+	"github.com/scotow/lingo"
 )
 
-const (
-	DefaultExpireDuration 	= time.Hour
-	DefaultCapacity 		= 100
+var (
+	port     = flag.Int("p", 8080, "listening port")
+	duration = flag.Duration("d", time.Hour, "expiration duration of links. 0 for no timeout (memory leak)")
+	capacity = flag.Int("n", 100, "maximum capacity of the redirection map, 0 for infinite capacity (memory leak)")
 )
 
 var (
@@ -26,7 +27,7 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	case "POST":
 		store(w, r)
 	default:
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
@@ -47,35 +48,15 @@ func store(_ http.ResponseWriter, r *http.Request) {
 	redirectionMap.Add(r.URL.Path[1:], r.FormValue("url"))
 }
 
-func listeningAddress() string {
-	port, set := os.LookupEnv("PORT")
-	if !set {
-		port = "8080"
-	}
-
-	return ":" + port
-}
-
 func main() {
-	durationFlag := flag.String("d", DefaultExpireDuration.String(), "expiration duration of links in seconds or using golang duration format. 0 for no timeout (memory leak)")
-	capacityFlag := flag.Int("n", DefaultCapacity, "maximum capacity of the redirection map, 0 for infinite capacity")
-
 	flag.Parse()
 
-	var duration time.Duration
-	durationSec, err := strconv.Atoi(*durationFlag)
-	if err == nil {
-		duration = time.Duration(durationSec) * time.Second
-	} else {
-		duration, err = time.ParseDuration(*durationFlag)
-		if err != nil {
-			log.Fatalln("invalid duration", duration)
-			return
-		}
+	if *capacity < 0 {
+		log.Fatalln("invalid capacity")
 	}
 
-	redirectionMap = *lingo.NewRedirectionMap(duration, *capacityFlag)
+	redirectionMap = *lingo.NewRedirectionMap(*duration, *capacity)
 
 	http.HandleFunc("/", handle)
-	log.Fatal(http.ListenAndServe(listeningAddress(), nil))
+	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(*port), nil))
 }

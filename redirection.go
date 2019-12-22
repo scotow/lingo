@@ -9,7 +9,7 @@ type Redirection struct {
 	Payload string
 
 	autoDelete *time.Timer
-	creation int64
+	creation   time.Time
 }
 
 func (r *Redirection) GetValidUrl() string {
